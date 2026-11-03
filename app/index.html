@@ -301,8 +301,11 @@ const SNAPSHOT = !!window.MORPHAMELEON_SNAPSHOT;   // set by app/export_demo.py:
 const ASSETS = SNAPSHOT ? "../../assets/" : "/assets/";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const INLINE = typeof window.MORPHAMELEON_SNAPSHOT === "object" ? window.MORPHAMELEON_SNAPSHOT : null;   // --single-file: the run is in the page
 async function snapshotApi(path, body) {
-  const read = async (file, as) => { const r = await fetch(file, { cache: "no-store" }); if (!r.ok) throw new Error("Not in this snapshot"); return r[as](); };
+  const read = async (file, as) => {
+    if (INLINE) { const v = file === "state.json" ? INLINE.state : file === "project.json" ? INLINE.project : INLINE.diffs[file.slice(6, -5)]; if (v === undefined) throw new Error("Not in this snapshot"); return v; }
+    const r = await fetch(file, { cache: "no-store" }); if (!r.ok) throw new Error("Not in this snapshot"); return r[as](); };
   if (body !== undefined) throw new Error("This is a read-only snapshot");
   const [, , what, id] = path.split("/");
   if (what === "state") return read("state.json", "json");
@@ -337,8 +340,8 @@ function route() {
 }
 window.addEventListener("hashchange", route);
 const loopBadge = (on) => on ? '<span class="badge s-work"><span class="status-eye running"></span>Migration running</span>' : '<span class="badge"><span class="status-eye paused"></span>Migration paused</span>';
-const brand = `<img class="brand-logo" src="${ASSETS}morphameleon-logo.png" alt="Morphameleon">`;
-const header = (extra = "") => `<div class="top"><a class="brand" href="${SNAPSHOT ? "../../" : "#/"}" title="${SNAPSHOT ? "Back to the overview" : "Back to all projects"}" aria-label="Morphameleon — ${SNAPSHOT ? "back to the overview" : "back to all projects"}">${brand}</a><div class="row">${SNAPSHOT ? '<a class="back-link" href="../../">Back to the overview</a>' : ""}${extra}<button class="helpbtn" onclick="startProductTour()" aria-label="Replay product tour">? Product tour</button></div></div>`;
+const brand = `<img class="brand-logo" src="${INLINE ? INLINE.logo : ASSETS + "morphameleon-logo.png"}" alt="Morphameleon">`;
+const header = (extra = "") => `<div class="top"><a class="brand" href="${INLINE ? "#" : SNAPSHOT ? "../../" : "#/"}" title="${SNAPSHOT ? "Back to the overview" : "Back to all projects"}" aria-label="Morphameleon — ${SNAPSHOT ? "back to the overview" : "back to all projects"}">${brand}</a><div class="row">${SNAPSHOT && !INLINE ? '<a class="back-link" href="../../">Back to the overview</a>' : ""}${extra}<button class="helpbtn" onclick="startProductTour()" aria-label="Replay product tour">? Product tour</button></div></div>`;
 const tailLoader = '<svg class="tail-loader" viewBox="0 0 44 44" aria-hidden="true"><path d="M7 10c17-7 30 1 28 13-2 10-15 15-22 9-5-4-2-11 4-11 5 0 7 5 4 8"/></svg>';
 const TOUR = [
   { sel: "#src", title: "Add a repository", text: "Paste a GitHub URL or a local path. Your code is not changed." },

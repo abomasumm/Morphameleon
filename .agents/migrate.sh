@@ -33,7 +33,7 @@ prepare() {
   echo "  modules without tests: $(jl '.untested|length') ($(jl '.untested|join(", ")'))"
   echo "Running the tests on the current code (the baseline must be green)..."
   local base=red
-  ( cd "$ROOT" && MODE=all BASE=HEAD bash "$AG/gates/check.sh" ) </dev/null >"$LOGS/migration-baseline.log" 2>&1 && base=green
+  ( unset NEBIUS_API_KEY; cd "$ROOT" && MODE=all BASE=HEAD bash "$AG/gates/check.sh" ) </dev/null >"$LOGS/migration-baseline.log" 2>&1 && base=green
   echo "  baseline: $base (log: .agents/logs/migration-baseline.log)"
   echo "Asking $(short_model "$(route_cos)") for suggested answers..."
   suggest </dev/null

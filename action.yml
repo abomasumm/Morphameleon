@@ -1,0 +1,116 @@
+name: Morphameleon
+description: Migrate a codebase and prove it still works. Tests pin today's behaviour first, then reviewed changes arrive as a pull request.
+author: abomasumm
+branding:
+  icon: refresh-cw
+  color: orange
+inputs:
+  api-key:
+    description: Your Nebius Token Factory API key. Pass it from a repository secret.
+    required: true
+  command:
+    description: start, resume, restart, approve, reject or retry
+    default: start
+  to:
+    description: "What to migrate to, for start and restart, e.g. TypeScript, strict mode"
+    default: ""
+  from:
+    description: What to migrate from. Detected when empty.
+    default: ""
+  scope:
+    description: Folders in scope, separated by semicolons. Detected when empty.
+    default: ""
+  keep:
+    description: What must never be touched, separated by semicolons.
+    default: ""
+  must:
+    description: Behaviour that must not change, separated by semicolons.
+    default: ""
+  task:
+    description: Task id for approve, reject and retry, e.g. T-003
+    default: ""
+  note:
+    description: Why you rejected a task, or a hint for a retry
+    default: ""
+  profile:
+    description: default, risky or fast
+    default: default
+  max-model-calls:
+    description: New work stops after this many model calls in one run. Tasks already running can add a few.
+    default: "200"
+  time-limit-minutes:
+    description: New work stops after this long, leaving time to save progress before the job limit.
+    default: "300"
+  open-pull-request:
+    description: Open a pull request when the migration finishes
+    default: "true"
+  node-version:
+    description: Node.js version. The agent runtime needs 22.19 or newer.
+    default: "22"
+  github-token:
+    description: Saves progress and opens the pull request. Never available while models or your code run.
+    default: ${{ github.token }}
+outputs:
+  outcome:
+    description: done, needs-you, limit-calls, limit-time, baseline-failed or key-leak
+    value: ${{ steps.run.outputs.outcome }}
+  pull-request:
+    description: The pull request's URL, when one was opened
+    value: ${{ steps.publish.outputs.url }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      with:
+        node-version: ${{ inputs.node-version }}
+    - name: Install tools
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/action/ci.sh" install
+    - name: Load saved progress
+      shell: bash
+      env:
+        MM_TOKEN: ${{ inputs.github-token }}
+        MM_COMMAND: ${{ inputs.command }}
+      run: bash "$GITHUB_ACTION_PATH/action/ci.sh" restore
+    - name: Run the migration
+      id: run
+      shell: bash
+      env:
+        NEBIUS_API_KEY: ${{ inputs.api-key }}
+        MM_COMMAND: ${{ inputs.command }}
+        MM_TO: ${{ inputs.to }}
+        MM_FROM: ${{ inputs.from }}
+        MM_SCOPE: ${{ inputs.scope }}
+        MM_KEEP: ${{ inputs.keep }}
+        MM_MUST: ${{ inputs.must }}
+        MM_TASK: ${{ inputs.task }}
+        MM_NOTE: ${{ inputs.note }}
+        MM_PROFILE: ${{ inputs.profile }}
+        MAX_MODEL_CALLS: ${{ inputs.max-model-calls }}
+        TIME_LIMIT_MINUTES: ${{ inputs.time-limit-minutes }}
+      run: bash "$GITHUB_ACTION_PATH/action/ci.sh" run
+    - name: Open the pull request
+      id: publish
+      if: always() && steps.run.outputs.outcome == 'done' && inputs.open-pull-request == 'true'
+      shell: bash
+      env:
+        MM_TOKEN: ${{ inputs.github-token }}
+      run: bash "$GITHUB_ACTION_PATH/action/ci.sh" publish
+    - name: Save progress
+      if: always()
+      shell: bash
+      env:
+        MM_TOKEN: ${{ inputs.github-token }}
+      run: bash "$GITHUB_ACTION_PATH/action/ci.sh" save
+    - name: Write the report
+      id: report
+      if: always()
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/action/ci.sh" report
+    - name: Upload the dashboard
+      if: always() && steps.report.outputs.dashboard != ''
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      with:
+        name: morphameleon-dashboard
+        path: ${{ steps.report.outputs.dashboard }}
+        if-no-files-found: ignore

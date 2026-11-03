@@ -345,11 +345,49 @@ the Claude CLI onto a shell-less, allow-listed design, and it became a migration
 `migrate` tasks with a gate that keeps tests untouched and green, a flaky-test check, a dashboard, and a
 local web app that takes a repo from URL to pull request.
 
+## Run it in GitHub Actions
+
+Migrate a repo with no install: the run happens on GitHub's machines, in your own repo, with your own Token
+Factory key. Your default branch stays untouched, and the result arrives as a pull request.
+
+1. Copy [`action/migrate.yml`](action/migrate.yml) to `.github/workflows/migrate.yml` in your repo.
+2. Add your Token Factory key under **Settings → Secrets and variables → Actions** as `NEBIUS_API_KEY`.
+3. Under **Settings → Actions → General → Workflow permissions**, choose **Read and write permissions** and
+   allow GitHub Actions to create pull requests.
+4. In the **Actions** tab, open **Migrate → Run workflow**, say what to migrate to, and start it.
+
+When it stops, the run's summary says why and what to do next. Each run also uploads a dashboard you can download
+as `morphameleon-dashboard`; open its `index.html` in a browser.
+
+| Summary says | What it means | What to do |
+|---|---|---|
+| `done` | Every task merged and the pull request is open | Review it and merge it |
+| `needs-you` | A task needs a decision | Run `retry`, `approve` or `reject` with its task id |
+| `limit-calls`, `limit-time` | It reached a limit (200 model calls, 5 hours) and saved its progress | Run `resume` |
+| `baseline-failed` | Your tests already fail, so nothing was changed | Fix them, then run `start` |
+| `key-leak` | A commit held your key, so nothing was pushed | Replace the key, then run `restart` |
+
+Know before you run it:
+
+- **It costs model credits.** You pay Token Factory for model calls. `max-model-calls` caps new work per run, and
+  tasks already running can add a few more calls.
+- **Only migrate code you trust.** The repo's tests run with no key, but the model workers need one on the same
+  machine, so code they run could reach it. The GitHub token is never available during those steps.
+- **On a public repo, what it saves is public.** Progress goes to `morphameleon/*` branches and the dashboard to an
+  artifact, including the plan, diffs and model replies. Your key is scrubbed from them. Delete those branches
+  once you've merged.
+- **Node.js repos work out of the box.** For anything else, add its setup steps before the action in the workflow.
+  The agent needs Node 22.19 or newer, so projects tied to an older Node aren't supported yet.
+- **Checks don't start on the pull request by themselves,** because GitHub doesn't run workflows for its own token.
+  Close and reopen the pull request to run them.
+
 ## Repo layout
 
 ```
 Brewfile                 macOS dependencies: brew bundle
 setup.sh                 install or update the agent in a target repo
+action.yml, action/      the GitHub Action: its steps (ci.sh) and the workflow users copy (migrate.yml)
+tests/                   the Action end to end, with a fake pi and gh: bash tests/run.sh
 app/                     local web app: server.py (standard library only) and index.html
 .agents/
   routing.sh             every model and routing decision

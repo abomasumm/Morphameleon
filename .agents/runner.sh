@@ -114,7 +114,8 @@ write_tests() { # id taskfile tests-wt worker-model
 add_tests() { [ -f "$TASKS/$2.red" ] && git -C "$1" merge -q --no-edit "task/$2-tests" >/dev/null 2>&1; true; }
 
 gates_once() { # wt taskfile logfile
-  ( cd "$1" && export BASE="$INTEGRATION_BRANCH" TASK_FILE="$2" TEST_GLOBS="$TEST_GLOBS" &&
+  # The repo's own tests and build run here, and they have no use for the model key.
+  ( unset NEBIUS_API_KEY; cd "$1" && export BASE="$INTEGRATION_BRANCH" TASK_FILE="$2" TEST_GLOBS="$TEST_GLOBS" &&
       bash "$AG/gates/check.sh" && bash "$AG/gates/scope.sh" && bash "$AG/gates/migration.sh" &&
       bash "$AG/gates/security.sh" ) >"$3" 2>&1
 }

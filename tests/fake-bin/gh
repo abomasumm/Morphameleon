@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# A stand-in for the GitHub CLI: records the call, then prints a pull request URL (or fails with FAKE_GH_FAIL).
+printf '%s\n' "token=${GH_TOKEN:-} $*" >>"$FAKE_GH_LOG"
+[ -n "${FAKE_GH_FAIL:-}" ] && { echo "not allowed to create pull requests" >&2; exit 1; }
+echo https://github.com/x/y/pull/7

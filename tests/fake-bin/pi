@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# A stand-in for pi: plays every model role with fixed replies, so the tests spend no credits.
+# FAKE_MODE: "" | fail (workers break T-002) | leak-log (a reply holds the key) | leak-commit (a commit holds it)
+# FAKE_SLOW=1 makes worker B hang, to test stopping a running task.
+prompt=$(cat); model=""; tools=""
+while [ $# -gt 0 ]; do case "$1" in --model) model=$2; shift ;; --tools) tools=$2; shift ;; esac; shift; done
+mode=${FAKE_MODE:-}
+if printf '%s' "$prompt" | head -1 | grep -q 'You are the orchestrator'; then
+  events=$(printf '%s\n' "$prompt" | sed -n '/^## Events to resolve/,/^## All tasks/p')
+  for g in $(printf '%s\n' "$events" | sed -n 's/^- plan //p'); do
+    for n in 1 2; do
+      l=$(printf '%s' abc | cut -c"$n")
+      printf -- '---\nid: T-00%s\ntitle: Migrate %s\ngoal: %s\ntype: migrate\nrisk: low\nlogic: no\nfiles: src/%s.js\nafter:\nstatus: queued\n---\n## Objective\nConvert.\n\n## Log\n' \
+        "$n" "$l" "$g" "$l" >".agents/tasks/T-00$n.md"
+    done
+    echo "RUN: .agents/orchestrate.sh planned $g"
+  done
+  for t in $(printf '%s\n' "$events" | sed -n 's/^- triage //p'); do echo "RUN: .agents/runner.sh park $t \"needs a person\""; done
+  for g in $(printf '%s\n' "$events" | sed -n 's/^- wrapup //p'); do echo "RUN: .agents/orchestrate.sh done $g \"finished\""; done
+  exit 0
+fi
+case ",$tools," in
+  *,bash,*)
+    case "$model" in *MiniMax*) [ -n "${FAKE_SLOW:-}" ] && sleep 120 ;; esac
+    f=$(printf '%s\n' "$prompt" | sed -n 's/^files: //p' | tail -1)
+    [ "$mode" = fail ] && [ "$f" = src/b.js ] && { echo 'process.exit(1)' >"$f"; echo done; exit 0; }
+    [ "$mode" = leak-commit ] && echo "// $NEBIUS_API_KEY" >>"$f"
+    echo "// migrated by $model" >>"$f"
+    [ "$mode" = leak-log ] && echo "my key is $NEBIUS_API_KEY"
+    echo done ;;
+  *) echo '{"verdict":"PASS","pick":"A"}' ;;
+esac

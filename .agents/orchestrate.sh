@@ -232,7 +232,7 @@ cmd_tick() {
 }
 
 case "${1:-}" in
-  goal) cmd_goal "${2:-}" "${3:-}" ;;
+  goal) cmd_goal "${2:-}" "${3:-}" "${4:-}" ;;
   goals) cmd_goals ;;
   tick) cmd_tick ;;
   events) cmd_events ;;
