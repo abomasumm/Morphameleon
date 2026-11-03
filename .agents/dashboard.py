@@ -230,8 +230,10 @@ def export(out):
     os.makedirs(os.path.join(out, "diffs"), exist_ok=True)
     st = state()
     st["static"] = True
+    # A snapshot is meant for publishing: keep local paths out of it.
+    text = json.dumps(st).replace(ROOT, ".").replace(os.path.expanduser("~"), "~")
     with open(os.path.join(out, "state.json"), "w") as fh:
-        json.dump(st, fh)
+        fh.write(text)
     for t in st["tasks"]:
         with open(os.path.join(out, "diffs", t["id"] + ".diff"), "w") as fh:
             fh.write(diff(t["id"]))

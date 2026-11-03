@@ -1,0 +1,32 @@
+diff --git a/src/catalog.js b/src/catalog.ts
+similarity index 76%
+rename from src/catalog.js
+rename to src/catalog.ts
+index 448c069..b58d06d 100644
+--- a/src/catalog.js
++++ b/src/catalog.ts
+@@ -1,5 +1,14 @@
+ // The plants we sell. stock 0 means sold out.
+-export var PLANTS = [
++interface Plant {
++  id: string;
++  name: string;
++  art: string;
++  price: number;
++  light: string;
++  stock: number;
++}
++
++export const PLANTS: Plant[] = [
+   { id: 'monstera', name: 'Monstera', art: '🪴', price: 38, light: 'bright', stock: 4 },
+   { id: 'snake', name: 'Snake plant', art: '🌵', price: 24, light: 'low', stock: 9 },
+   { id: 'pothos', name: 'Golden pothos', art: '🌿', price: 16.5, light: 'low', stock: 0 },
+@@ -8,7 +17,7 @@ export var PLANTS = [
+   { id: 'zz', name: 'ZZ plant', art: '🌱', price: 21, light: 'low', stock: 7 }
+ ];
+ 
+-export function byLight(plants, light) {
++export function byLight(plants: Plant[], light?: string | null): Plant[] {
+   if (!light || light === 'all') return plants.slice();
+   return plants.filter(function (p) { return p.light === light; });
+ }

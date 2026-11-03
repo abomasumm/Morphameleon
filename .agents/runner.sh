@@ -332,6 +332,11 @@ cmd_run() {
     [ "$running" -ge "$MAX_PARALLEL" ] && break
     [ "$(fm_get "$f" status)" = queued ] || continue
     nb=$(fm_get "$f" not_before); [ -n "$nb" ] && [ "$(date +%s)" -lt "$nb" ] && continue
+    # Only build tasks of a goal the orchestrator finished planning (never half a plan).
+    g=$(fm_get "$f" goal)
+    if [ -n "$g" ] && [ -f "$AG/goals/$g.md" ]; then
+      case "$(fm_get "$AG/goals/$g.md" status)" in planned|wrapup|done) ;; *) continue ;; esac
+    fi
     id=$(fm_get "$f" id)
     ok=1; for dep in $(fm_get "$f" after | tr ',[]' '   '); do
       [ "$(fm_get "$TASKS/$dep.md" status 2>/dev/null)" = merged ] || ok=0; done

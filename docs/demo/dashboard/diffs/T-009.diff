@@ -1,0 +1,19 @@
+diff --git a/src/format.js b/src/format.ts
+similarity index 62%
+rename from src/format.js
+rename to src/format.ts
+index c9442c8..7708c73 100644
+--- a/src/format.js
++++ b/src/format.ts
+@@ -1,9 +1,9 @@
+ // Formatting helpers. Prices are plain numbers in dollars.
+ 
+-export function money(n) {
++export function money(n: number): string {
+   return '$' + (Math.round(n * 100) / 100).toFixed(2);
+ }
+ 
+-export function plural(n, word) {
++export function plural(n: number, word: string): string {
+   return n + ' ' + (n === 1 ? word : word + 's');
+ }

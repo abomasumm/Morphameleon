@@ -103,6 +103,7 @@ def git(p, *a):
 
 
 def commit(p, paths, message):
+    paths = [x for x in paths if os.path.exists(os.path.join(p["path"], x))]   # e.g. no config.json until roles are saved
     git(p, "add", "--", *paths)
     rc, out = run(["git", "-c", "user.name=Migration Agent", "-c", "user.email=agent@localhost", "commit", "-q",
                    "-m", message], p["path"])
@@ -266,7 +267,9 @@ def start_loop(p):
         return
     os.makedirs(ag(p, "logs"), exist_ok=True)
     out = open(ag(p, "logs", "loop.log"), "a")
-    proc = subprocess.Popen(["bash", ag(p, "loop.sh")], cwd=p["path"], stdout=out, stderr=subprocess.STDOUT,
+    # caffeinate (macOS) keeps the machine awake while the loop runs: a sleeping Mac freezes every model call.
+    cmd = (["caffeinate", "-is"] if shutil.which("caffeinate") else []) + ["bash", ag(p, "loop.sh")]
+    proc = subprocess.Popen(cmd, cwd=p["path"], stdout=out, stderr=subprocess.STDOUT,
                             stdin=subprocess.DEVNULL, start_new_session=True)
     with open(ag(p, "loop.pid"), "w") as fh:
         fh.write(str(proc.pid))

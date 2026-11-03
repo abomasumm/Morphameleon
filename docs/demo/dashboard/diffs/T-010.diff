@@ -1,0 +1,371 @@
+diff --git a/index.html b/index.html
+index 71c17e1..491391b 100644
+--- a/index.html
++++ b/index.html
+@@ -8,6 +8,6 @@
+ </head>
+ <body>
+   <div id="app"></div>
+-  <script type="module" src="/src/main.js"></script>
++  <script type="module" src="/src/main.ts"></script>
+ </body>
+ </html>
+diff --git a/src/app.js b/src/app.js
+deleted file mode 100644
+index 5d43485..0000000
+--- a/src/app.js
++++ /dev/null
+@@ -1,44 +0,0 @@
+-// Wires the page together. mount(root) renders the shop into root (a DOM element) and returns the cart.
+-import $ from 'jquery';
+-import { PLANTS, byLight } from './catalog';
+-import { createCart } from './cart';
+-import { plantCard, cartPanel } from './view';
+-
+-export function mount(root) {
+-  var cart = createCart();
+-  var light = 'all';
+-  var $root = $(root).empty();
+-  var $shop = $('<div class="shop"><h1>Fern &amp; Folly<small>Houseplants, delivered.</small></h1></div>');
+-  var $main = $('<main></main>');
+-  var $filters = $('<div class="filters"></div>');
+-  ['all', 'low', 'medium', 'bright'].forEach(function (l) {
+-    $filters.append($('<button></button>').attr('data-light', l).text(l === 'all' ? 'All' : l + ' light'));
+-  });
+-  var $grid = $('<div class="grid"></div>');
+-  var $cartSlot = $('<div></div>');
+-  $main.append($filters, $grid);
+-  $shop.append($main, $cartSlot);
+-  $root.append($shop);
+-
+-  function inCart(id) {
+-    var line = cart.lines.filter(function (l) { return l.id === id; })[0];
+-    return line ? line.qty : 0;
+-  }
+-
+-  function render() {
+-    $filters.find('button').each(function () { $(this).toggleClass('active', $(this).attr('data-light') === light); });
+-    $grid.empty();
+-    byLight(PLANTS, light).forEach(function (p) { $grid.append(plantCard(p, inCart(p.id))); });
+-    $cartSlot.empty().append(cartPanel(cart));
+-  }
+-
+-  $filters.on('click', 'button', function () { light = $(this).attr('data-light'); render(); });
+-  $grid.on('click', '.add', function () {
+-    var id = $(this).closest('.card').attr('data-id');
+-    cart.add(PLANTS.filter(function (p) { return p.id === id; })[0]);
+-  });
+-  $cartSlot.on('click', '.remove', function () { cart.remove($(this).closest('li').attr('data-id')); });
+-  cart.onChange(render);
+-  render();
+-  return cart;
+-}
+diff --git a/src/app.ts b/src/app.ts
+new file mode 100644
+index 0000000..2b31d9d
+--- /dev/null
++++ b/src/app.ts
+@@ -0,0 +1,88 @@
++// Wires the page together. mount(root) renders the shop into root (a DOM element) and returns the cart.
++import { PLANTS, byLight } from './catalog';
++import { createCart } from './cart';
++import { plantCard, cartPanel } from './view';
++
++export function mount(root: HTMLElement) {
++  const cart = createCart();
++  let light = 'all';
++  root.replaceChildren();
++
++  const shop = document.createElement('div');
++  shop.className = 'shop';
++
++  const heading = document.createElement('h1');
++  heading.textContent = 'Fern & Folly';
++  const subtitle = document.createElement('small');
++  subtitle.textContent = 'Houseplants, delivered.';
++  heading.append(subtitle);
++  shop.append(heading);
++
++  const main = document.createElement('main');
++  const filters = document.createElement('div');
++  filters.className = 'filters';
++  ['all', 'low', 'medium', 'bright'].forEach(function (l) {
++    const button = document.createElement('button');
++    button.setAttribute('data-light', l);
++    button.textContent = l === 'all' ? 'All' : l + ' light';
++    filters.append(button);
++  });
++
++  const grid = document.createElement('div');
++  grid.className = 'grid';
++  const cartSlot = document.createElement('div');
++  main.append(filters, grid);
++  shop.append(main, cartSlot);
++  root.append(shop);
++
++  function inCart(id: string): number {
++    const line = cart.lines.filter(function (l) { return l.id === id; })[0];
++    return line ? line.qty : 0;
++  }
++
++  function render(): void {
++    filters.querySelectorAll('button').forEach(function (button) {
++      button.classList.toggle('active', button.getAttribute('data-light') === light);
++    });
++    grid.replaceChildren();
++    byLight(PLANTS, light).forEach(function (p) { grid.append(plantCard(p, inCart(p.id))); });
++    cartSlot.replaceChildren(cartPanel(cart));
++  }
++
++  filters.addEventListener('click', function (event) {
++    const target = event.target;
++    if (!(target instanceof Element)) return;
++    const button = target.closest('button[data-light]');
++    if (!button || !filters.contains(button)) return;
++    const next = button.getAttribute('data-light');
++    if (next === null) return;
++    light = next;
++    render();
++  });
++
++  grid.addEventListener('click', function (event) {
++    const target = event.target;
++    if (!(target instanceof Element)) return;
++    const button = target.closest('.add');
++    if (!button || !grid.contains(button)) return;
++    const card = button.closest('[data-id]');
++    const id = card ? card.getAttribute('data-id') : null;
++    if (id === null) return;
++    const plant = PLANTS.filter(function (p) { return p.id === id; })[0];
++    if (plant) cart.add(plant);
++  });
++
++  cartSlot.addEventListener('click', function (event) {
++    const target = event.target;
++    if (!(target instanceof Element)) return;
++    const button = target.closest('.remove');
++    if (!button || !cartSlot.contains(button)) return;
++    const line = button.closest('[data-id]');
++    const id = line ? line.getAttribute('data-id') : null;
++    if (id !== null) cart.remove(id);
++  });
++
++  cart.onChange(render);
++  render();
++  return cart;
++}
+diff --git a/src/main.js b/src/main.js
+deleted file mode 100644
+index 3444843..0000000
+--- a/src/main.js
++++ /dev/null
+@@ -1,2 +0,0 @@
+-import { mount } from './app';
+-mount(document.getElementById('app'));
+diff --git a/src/main.ts b/src/main.ts
+new file mode 100644
+index 0000000..f5744d4
+--- /dev/null
++++ b/src/main.ts
+@@ -0,0 +1,4 @@
++import { mount } from './app';
++
++const root = document.getElementById('app');
++if (root) mount(root);
+diff --git a/src/view.js b/src/view.js
+deleted file mode 100644
+index 04c4ddf..0000000
+--- a/src/view.js
++++ /dev/null
+@@ -1,44 +0,0 @@
+-// Rendering with jQuery. Each function returns a jQuery element.
+-import $ from 'jquery';
+-import { money, plural } from './format';
+-
+-export function plantCard(plant, inCart) {
+-  var soldOut = plant.stock < 1;
+-  var full = inCart >= plant.stock;
+-  var $card = $('<article class="card"></article>').attr('data-id', plant.id);
+-  $card.append($('<div class="art"></div>').text(plant.art));
+-  $card.append($('<h3></h3>').text(plant.name));
+-  $card.append($('<div class="meta"></div>').text(plant.light + ' light · ' + (soldOut ? 'sold out' : plant.stock + ' left')));
+-  var $row = $('<div class="row"></div>');
+-  $row.append($('<strong></strong>').text(money(plant.price)));
+-  $row.append($('<button class="add"></button>').text(soldOut ? 'Sold out' : full ? 'All in cart' : 'Add').prop('disabled', soldOut || full));
+-  return $card.append($row);
+-}
+-
+-export function cartPanel(cart) {
+-  var $panel = $('<aside class="cart"></aside>');
+-  $panel.append($('<h2></h2>').text('Cart (' + plural(cart.count(), 'plant') + ')'));
+-  if (cart.lines.length === 0) {
+-    $panel.append('<p class="empty">Your cart is empty.</p>');
+-    return $panel;
+-  }
+-  var $ul = $('<ul></ul>');
+-  cart.lines.forEach(function (l) {
+-    var $li = $('<li></li>').attr('data-id', l.id);
+-    $li.append($('<span></span>').text(l.qty + ' × ' + l.name));
+-    $li.append($('<span></span>').text(money(l.price * l.qty)));
+-    $li.append($('<button class="remove" aria-label="Remove ' + l.name + '">✕</button>'));
+-    $ul.append($li);
+-  });
+-  $panel.append($ul);
+-  var $totals = $('<div class="totals"></div>');
+-  $totals.append($('<div><span>Subtotal</span><span class="subtotal"></span></div>').find('.subtotal').text(money(cart.subtotal())).end());
+-  $totals.append($('<div><span>Shipping</span><span class="shipping"></span></div>').find('.shipping').text(cart.shipping() ? money(cart.shipping()) : 'Free').end());
+-  $totals.append($('<div class="grand"><span>Total</span><span class="total"></span></div>').find('.total').text(money(cart.total())).end());
+-  $panel.append($totals);
+-  var left = cart.toFreeShipping();
+-  var pct = Math.min(100, Math.round((cart.subtotal() / 75) * 100));
+-  var $ship = $('<div class="ship"></div>').text(left > 0 ? money(left) + ' more for free shipping' : 'You get free shipping');
+-  $ship.append($('<div class="bar"><span></span></div>').find('span').css('width', pct + '%').end());
+-  return $panel.append($ship);
+-}
+diff --git a/src/view.ts b/src/view.ts
+new file mode 100644
+index 0000000..05357c0
+--- /dev/null
++++ b/src/view.ts
+@@ -0,0 +1,141 @@
++// Rendering with native DOM APIs. Each function returns an HTMLElement.
++import { money, plural } from './format';
++import type { createCart } from './cart';
++
++interface Plant {
++  id: string;
++  name: string;
++  art: string;
++  price: number;
++  light: string;
++  stock: number;
++}
++
++type Cart = ReturnType<typeof createCart>;
++
++export function plantCard(plant: Plant, inCart: number): HTMLElement {
++  const soldOut = plant.stock < 1;
++  const full = inCart >= plant.stock;
++  const card = document.createElement('article');
++  card.className = 'card';
++  card.setAttribute('data-id', plant.id);
++
++  const art = document.createElement('div');
++  art.className = 'art';
++  art.textContent = plant.art;
++  card.append(art);
++
++  const name = document.createElement('h3');
++  name.textContent = plant.name;
++  card.append(name);
++
++  const meta = document.createElement('div');
++  meta.className = 'meta';
++  meta.textContent = plant.light + ' light · ' + (soldOut ? 'sold out' : plant.stock + ' left');
++  card.append(meta);
++
++  const row = document.createElement('div');
++  row.className = 'row';
++
++  const price = document.createElement('strong');
++  price.textContent = money(plant.price);
++  row.append(price);
++
++  const add = document.createElement('button');
++  add.className = 'add';
++  add.textContent = soldOut ? 'Sold out' : full ? 'All in cart' : 'Add';
++  add.disabled = soldOut || full;
++  row.append(add);
++
++  card.append(row);
++  return card;
++}
++
++export function cartPanel(cart: Cart): HTMLElement {
++  const panel = document.createElement('aside');
++  panel.className = 'cart';
++
++  const heading = document.createElement('h2');
++  heading.textContent = 'Cart (' + plural(cart.count(), 'plant') + ')';
++  panel.append(heading);
++
++  if (cart.lines.length === 0) {
++    const empty = document.createElement('p');
++    empty.className = 'empty';
++    empty.textContent = 'Your cart is empty.';
++    panel.append(empty);
++    return panel;
++  }
++
++  const ul = document.createElement('ul');
++  cart.lines.forEach(function (l) {
++    const li = document.createElement('li');
++    li.setAttribute('data-id', l.id);
++
++    const description = document.createElement('span');
++    description.textContent = l.qty + ' × ' + l.name;
++    li.append(description);
++
++    const lineTotal = document.createElement('span');
++    lineTotal.textContent = money(l.price * l.qty);
++    li.append(lineTotal);
++
++    const remove = document.createElement('button');
++    remove.className = 'remove';
++    remove.setAttribute('aria-label', 'Remove ' + l.name);
++    remove.textContent = '✕';
++    li.append(remove);
++
++    ul.append(li);
++  });
++  panel.append(ul);
++
++  const totals = document.createElement('div');
++  totals.className = 'totals';
++
++  const subtotalRow = document.createElement('div');
++  const subtotalLabel = document.createElement('span');
++  subtotalLabel.textContent = 'Subtotal';
++  const subtotalValue = document.createElement('span');
++  subtotalValue.className = 'subtotal';
++  subtotalValue.textContent = money(cart.subtotal());
++  subtotalRow.append(subtotalLabel, subtotalValue);
++  totals.append(subtotalRow);
++
++  const shippingRow = document.createElement('div');
++  const shippingLabel = document.createElement('span');
++  shippingLabel.textContent = 'Shipping';
++  const shippingValue = document.createElement('span');
++  shippingValue.className = 'shipping';
++  shippingValue.textContent = cart.shipping() ? money(cart.shipping()) : 'Free';
++  shippingRow.append(shippingLabel, shippingValue);
++  totals.append(shippingRow);
++
++  const totalRow = document.createElement('div');
++  totalRow.className = 'grand';
++  const totalLabel = document.createElement('span');
++  totalLabel.textContent = 'Total';
++  const totalValue = document.createElement('span');
++  totalValue.className = 'total';
++  totalValue.textContent = money(cart.total());
++  totalRow.append(totalLabel, totalValue);
++  totals.append(totalRow);
++
++  panel.append(totals);
++
++  const left = cart.toFreeShipping();
++  const pct = Math.min(100, Math.round((cart.subtotal() / 75) * 100));
++  const ship = document.createElement('div');
++  ship.className = 'ship';
++  ship.textContent = left > 0 ? money(left) + ' more for free shipping' : 'You get free shipping';
++
++  const bar = document.createElement('div');
++  bar.className = 'bar';
++  const barFill = document.createElement('span');
++  barFill.style.width = pct + '%';
++  bar.append(barFill);
++  ship.append(bar);
++  panel.append(ship);
++
++  return panel;
++}

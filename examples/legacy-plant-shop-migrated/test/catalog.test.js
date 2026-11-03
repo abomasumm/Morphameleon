@@ -1,0 +1,55 @@
+import { describe, it, expect } from 'vitest';
+import { PLANTS, byLight } from '../src/catalog';
+
+describe('catalog', () => {
+  it('pins the plant list', () => {
+    expect(PLANTS).toEqual([
+      { id: 'monstera', name: 'Monstera', art: '🪴', price: 38, light: 'bright', stock: 4 },
+      { id: 'snake', name: 'Snake plant', art: '🌵', price: 24, light: 'low', stock: 9 },
+      { id: 'pothos', name: 'Golden pothos', art: '🌿', price: 16.5, light: 'low', stock: 0 },
+      { id: 'fiddle', name: 'Fiddle-leaf fig', art: '🌳', price: 64, light: 'bright', stock: 2 },
+      { id: 'calathea', name: 'Calathea', art: '🍃', price: 29.99, light: 'medium', stock: 5 },
+      { id: 'zz', name: 'ZZ plant', art: '🌱', price: 21, light: 'low', stock: 7 }
+    ]);
+  });
+
+  it('filters low-light plants in order', () => {
+    expect(byLight(PLANTS, 'low').map((p) => p.id)).toEqual(['snake', 'pothos', 'zz']);
+  });
+
+  it('filters bright-light plants in order', () => {
+    expect(byLight(PLANTS, 'bright').map((p) => p.id)).toEqual(['monstera', 'fiddle']);
+  });
+
+  it('returns a copy of every plant for "all"', () => {
+    const all = byLight(PLANTS, 'all');
+    expect(all).not.toBe(PLANTS);
+    expect(all).toHaveLength(PLANTS.length);
+    expect(all.map((p) => p.id)).toEqual(PLANTS.map((p) => p.id));
+    all.forEach((p, i) => expect(p).toBe(PLANTS[i]));
+  });
+
+  it('treats empty, null and undefined lights like "all"', () => {
+    ['', null, undefined].forEach((light) => {
+      const result = byLight(PLANTS, light);
+      expect(result).not.toBe(PLANTS);
+      expect(result).toHaveLength(PLANTS.length);
+      expect(result.map((p) => p.id)).toEqual(PLANTS.map((p) => p.id));
+      result.forEach((p, i) => expect(p).toBe(PLANTS[i]));
+    });
+  });
+
+  it('returns an empty array for an unknown light', () => {
+    expect(byLight(PLANTS, 'dark')).toEqual([]);
+  });
+
+  it('does not mutate PLANTS', () => {
+    byLight(PLANTS, 'low');
+    byLight(PLANTS, 'all');
+    byLight(PLANTS, 'bright');
+    byLight(PLANTS, 'dark');
+    expect(PLANTS.map((p) => p.id)).toEqual([
+      'monstera', 'snake', 'pothos', 'fiddle', 'calathea', 'zz'
+    ]);
+  });
+});

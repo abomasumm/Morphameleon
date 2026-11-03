@@ -185,6 +185,15 @@ _wake() {
   [ $rc -eq 0 ] && orch_run_commands "$out"
   if [ $rc -eq 0 ]; then echo "$sig" >"$OD/last_sig"; rm -f "$OD/last_failed"
   else touch "$OD/last_failed"; olog "wake failed (rc $rc), see $out.err"; fi
+  # A plan that never reached `orchestrate.sh planned` (the call failed, timed out or stopped early) is
+  # discarded, so the next wake plans from scratch instead of adding to half a plan.
+  for id in $(echo "$ev" | awk '$1=="plan"{print $2}'); do
+    [ "$(fm_get "$GOALS/$id.md" status)" = packed ] || continue
+    for tf in $(goal_tasks "$id"); do
+      [ "$(fm_get "$tf" status)" = queued ] && [ -z "$(fm_get "$tf" attempt)" ] && [ -z "$(fm_get "$tf" pid)" ] || continue
+      rm -f "$tf" "${tf%.md}.pack.md"; olog "discarded $(basename "$tf" .md): $id was not fully planned"
+    done
+  done
   { echo "--- $(now) reply:"; tail -n 40 "$out"; } >>"$OLOG"
   # Anything left unresolved is still an event; the signature check stops a same-state rewake.
   echo "wake done (rc $rc); reply in $out"

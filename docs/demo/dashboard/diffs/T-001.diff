@@ -1,0 +1,32 @@
+diff --git a/test/money.test.js b/test/money.test.js
+new file mode 100644
+index 0000000..de325de
+--- /dev/null
++++ b/test/money.test.js
+@@ -0,0 +1,26 @@
++import { describe, it, expect } from 'vitest';
++import { money } from '../src/format';
++
++// Characterization tests pinning current money() behaviour before the
++// TypeScript migration. The minus sign lands after the '$' because the
++// sign is part of the number's string form, not of the '$' prefix:
++// '$' + (-12.3).toFixed(2) === '$-12.30'.
++describe('money', () => {
++  it('formats positive amounts with two decimals', () => {
++    expect(money(12.3)).toBe('$12.30');
++  });
++
++  it('puts the minus sign after the dollar sign', () => {
++    expect(money(-12.3)).toBe('$-12.30');
++  });
++
++  it('rounds via Math.round(n * 100), exposing binary floating point', () => {
++    // 1.005 * 100 === 100.49999999999999, so this rounds down to $1.00.
++    expect(money(1.005)).toBe('$1.00');
++  });
++
++  it('formats negative zero without a sign', () => {
++    // -0.004 * 100 rounds to -0, which toFixed(2) renders as "0.00".
++    expect(money(-0.004)).toBe('$0.00');
++  });
++});

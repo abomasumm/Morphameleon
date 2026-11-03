@@ -1,0 +1,154 @@
+import { describe, it, expect } from 'vitest';
+import { plantCard, cartPanel } from '../src/view';
+import { createCart } from '../src/cart';
+import { PLANTS } from '../src/catalog';
+
+const monstera = PLANTS.find((p) => p.id === 'monstera'); // stock 4, price 38
+const pothos = PLANTS.find((p) => p.id === 'pothos'); // stock 0, price 16.5
+const snake = PLANTS.find((p) => p.id === 'snake'); // stock 9, price 24
+const calathea = PLANTS.find((p) => p.id === 'calathea'); // stock 5, price 29.99
+
+// The view returns jQuery objects today; normalize to the wrapped DOM element
+// so the tests pin markup, not the wrapper type.
+function toEl(result) {
+  return result && typeof result === 'object' && 0 in result ? result[0] : result;
+}
+
+describe('plantCard', () => {
+  it('renders an article.card with data-id, art, name and meta', () => {
+    const card = toEl(plantCard(monstera, 0));
+    expect(card.tagName).toBe('ARTICLE');
+    expect(card.className).toBe('card');
+    expect(card.getAttribute('data-id')).toBe('monstera');
+    expect(card.querySelector('.art').textContent).toBe('🪴');
+    expect(card.querySelector('h3').textContent).toBe('Monstera');
+    expect(card.querySelector('.meta').textContent).toBe('bright light · 4 left');
+  });
+
+  it('renders the row with the price and an add button', () => {
+    const card = toEl(plantCard(calathea, 0));
+    const row = card.querySelector('.row');
+    expect(row.tagName).toBe('DIV');
+    expect(row.querySelector('strong').textContent).toBe('$29.99');
+    const button = row.querySelector('button.add');
+    expect(button.textContent).toBe('Add');
+    expect(button.disabled).toBe(false);
+  });
+
+  it('formats fractional prices with two decimals', () => {
+    const card = toEl(plantCard(pothos, 0));
+    expect(card.querySelector('.row strong').textContent).toBe('$16.50');
+  });
+
+  it('keeps the add button active while inCart is below stock', () => {
+    const card = toEl(plantCard(monstera, 3));
+    const button = card.querySelector('button.add');
+    expect(button.textContent).toBe('Add');
+    expect(button.disabled).toBe(false);
+  });
+
+  it('labels the button All in cart and disables it at the stock limit', () => {
+    const card = toEl(plantCard(monstera, monstera.stock));
+    const button = card.querySelector('button.add');
+    expect(button.textContent).toBe('All in cart');
+    expect(button.disabled).toBe(true);
+  });
+
+  it('labels the button All in cart and disables it above the stock limit', () => {
+    const card = toEl(plantCard(monstera, monstera.stock + 1));
+    const button = card.querySelector('button.add');
+    expect(button.textContent).toBe('All in cart');
+    expect(button.disabled).toBe(true);
+  });
+
+  it('labels the button Sold out and disables it for a sold-out plant', () => {
+    const card = toEl(plantCard(pothos, 0));
+    expect(card.querySelector('.meta').textContent).toBe('low light · sold out');
+    const button = card.querySelector('button.add');
+    expect(button.textContent).toBe('Sold out');
+    expect(button.disabled).toBe(true);
+  });
+});
+
+describe('cartPanel', () => {
+  it('renders an empty panel with no list or totals', () => {
+    const cart = createCart();
+    const panel = toEl(cartPanel(cart));
+    expect(panel.tagName).toBe('ASIDE');
+    expect(panel.className).toBe('cart');
+    expect(panel.querySelector('h2').textContent).toBe('Cart (0 plants)');
+    const empty = panel.querySelector('p.empty');
+    expect(empty.tagName).toBe('P');
+    expect(empty.textContent).toBe('Your cart is empty.');
+    expect(panel.querySelector('ul')).toBeNull();
+    expect(panel.querySelector('.totals')).toBeNull();
+    expect(panel.querySelector('.ship')).toBeNull();
+  });
+
+  it('renders one line with data-id, spans and a remove button', () => {
+    const cart = createCart();
+    cart.add(snake);
+    const panel = toEl(cartPanel(cart));
+    expect(panel.querySelector('h2').textContent).toBe('Cart (1 plant)');
+    const li = panel.querySelector('li');
+    expect(li.getAttribute('data-id')).toBe('snake');
+    const spans = li.querySelectorAll('span');
+    expect(spans[0].textContent).toBe('1 × Snake plant');
+    expect(spans[1].textContent).toBe('$24.00');
+    const button = li.querySelector('button.remove');
+    expect(button.getAttribute('aria-label')).toBe('Remove Snake plant');
+    expect(button.textContent).toBe('✕');
+  });
+
+  it('renders one li per line in insertion order', () => {
+    const cart = createCart();
+    cart.add(snake);
+    cart.add(snake);
+    cart.add(PLANTS.find((p) => p.id === 'zz'));
+    const panel = toEl(cartPanel(cart));
+    expect(panel.querySelector('h2').textContent).toBe('Cart (3 plants)');
+    const lis = panel.querySelectorAll('li');
+    expect(lis).toHaveLength(2);
+    expect(lis[0].getAttribute('data-id')).toBe('snake');
+    expect(lis[0].querySelectorAll('span')[0].textContent).toBe('2 × Snake plant');
+    expect(lis[0].querySelectorAll('span')[1].textContent).toBe('$48.00');
+    expect(lis[1].getAttribute('data-id')).toBe('zz');
+    expect(lis[1].querySelectorAll('span')[0].textContent).toBe('1 × ZZ plant');
+    expect(lis[1].querySelectorAll('span')[1].textContent).toBe('$21.00');
+  });
+
+  it('pins the totals and the shipping bar below the free threshold', () => {
+    const cart = createCart();
+    cart.add(snake); // subtotal 24
+    const panel = toEl(cartPanel(cart));
+    expect(panel.querySelector('.subtotal').textContent).toBe('$24.00');
+    expect(panel.querySelector('.shipping').textContent).toBe('$6.50');
+    expect(panel.querySelector('.total').textContent).toBe('$30.50');
+    expect(panel.querySelector('.ship').textContent).toContain('$51.00 more for free shipping');
+    const width = Math.min(100, Math.round((cart.subtotal() / 75) * 100)) + '%';
+    expect(panel.querySelector('.bar > span').style.width).toBe(width);
+    expect(panel.querySelector('.bar > span').style.width).toBe('32%');
+  });
+
+  it('pins free shipping and a full bar at the threshold and above', () => {
+    const cart = createCart();
+    cart.add(monstera);
+    cart.add(monstera); // subtotal 76
+    const panel = toEl(cartPanel(cart));
+    expect(panel.querySelector('.subtotal').textContent).toBe('$76.00');
+    expect(panel.querySelector('.shipping').textContent).toBe('Free');
+    expect(panel.querySelector('.total').textContent).toBe('$76.00');
+    expect(panel.querySelector('.ship').textContent).toContain('You get free shipping');
+    expect(panel.querySelector('.bar > span').style.width).toBe('100%');
+  });
+
+  it('pins the empty-panel text even after lines are removed', () => {
+    const cart = createCart();
+    cart.add(snake);
+    cart.remove('snake');
+    const panel = toEl(cartPanel(cart));
+    expect(panel.querySelector('h2').textContent).toBe('Cart (0 plants)');
+    expect(panel.querySelector('p.empty').textContent).toBe('Your cart is empty.');
+    expect(panel.querySelector('ul')).toBeNull();
+  });
+});

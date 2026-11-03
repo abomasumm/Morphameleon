@@ -1,0 +1,23 @@
+{
+  "name": "legacy-plant-shop",
+  "version": "1.2.0",
+  "description": "A small plant shop page in jQuery and untyped JavaScript. Demo target: migrate to TypeScript with plain DOM code, no jQuery.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jquery": "~3.7.1"
+  },
+  "devDependencies": {
+    "@types/jquery": "~3.5.32",
+    "jsdom": "~26.1.0",
+    "typescript": "~5.9.3",
+    "vite": "~6.3.5",
+    "vitest": "~3.2.4"
+  }
+}

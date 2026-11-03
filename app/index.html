@@ -235,6 +235,9 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 14px;
 
 /* Overlays */
 .tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--page); padding: 8px 10px; border-radius: 8px; font-size: 14px; display: none; z-index: 10; }
+/* Read-only snapshot of a finished run (app/export_demo.py): nothing that needs the live server shows. */
+html.snapshot .helpbtn, html.snapshot .project-switcher, html.snapshot #loopbadge, html.snapshot #crumb, html.snapshot .project-meta, html.snapshot #stepnav, html.snapshot #loopbtn { display: none; }
+.back-link { padding-right: 14px; font-size: 15px; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--page); padding: 12px 18px; border-radius: var(--radius-sm); display: none; max-width: 90vw; z-index: 20; font-size: 15px; }
 .tail-loader { display: inline-block; width: 40px; height: 40px; color: var(--accent); }
 .tail-loader path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 90; animation: draw-tail 1.8s ease-in-out infinite; }
@@ -294,9 +297,22 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 14px;
 </div>
 <script>
 const TOKEN = "__APP_TOKEN__";
+const SNAPSHOT = !!window.MORPHAMELEON_SNAPSHOT;   // set by app/export_demo.py: a finished run, served as plain files
+const ASSETS = SNAPSHOT ? "../../assets/" : "/assets/";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+async function snapshotApi(path, body) {
+  const read = async (file, as) => { const r = await fetch(file, { cache: "no-store" }); if (!r.ok) throw new Error("Not in this snapshot"); return r[as](); };
+  if (body !== undefined) throw new Error("This is a read-only snapshot");
+  const [, , what, id] = path.split("/");
+  if (what === "state") return read("state.json", "json");
+  if (what === "diff") return { diff: await read(`diffs/${id}.diff`, "text") };
+  if (path.startsWith("projects/") && !what) return read("project.json", "json");
+  if (path === "projects") return [await read("project.json", "json")];
+  throw new Error("Not in this snapshot");
+}
 async function api(path, body) {
+  if (SNAPSHOT) return snapshotApi(path, body);
   const r = await fetch("/api/" + path, { method: body === undefined ? "GET" : "POST", headers: { "X-App-Token": TOKEN, "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
   const j = await r.json().catch(() => ({ error: "bad response" }));
   if (!r.ok) throw new Error(j.error || r.statusText);
@@ -314,14 +330,15 @@ async function waitJob(job, logEl) {
 let timer = null, tourIndex = -1, tourSteps = [], tourPid = null, tourWaiting = null, mountedPid = null;
 function route() {
   clearTimeout(timer);
+  if (SNAPSHOT) return projectPage("snapshot", "dashboard");
   const [_, a, pid, step] = location.hash.split("/");
   if (a === "p" && pid) return projectPage(pid, step || "providers");
   return home();
 }
 window.addEventListener("hashchange", route);
 const loopBadge = (on) => on ? '<span class="badge s-work"><span class="status-eye running"></span>Migration running</span>' : '<span class="badge"><span class="status-eye paused"></span>Migration paused</span>';
-const brand = `<img class="brand-logo" src="/assets/morphameleon-logo.png" alt="Morphameleon">`;
-const header = (extra = "") => `<div class="top"><a class="brand" href="#/" title="Back to all projects" aria-label="Morphameleon — back to all projects">${brand}</a><div class="row">${extra}<button class="helpbtn" onclick="startProductTour()" aria-label="Replay product tour">? Product tour</button></div></div>`;
+const brand = `<img class="brand-logo" src="${ASSETS}morphameleon-logo.png" alt="Morphameleon">`;
+const header = (extra = "") => `<div class="top"><a class="brand" href="${SNAPSHOT ? "../../" : "#/"}" title="${SNAPSHOT ? "Back to the overview" : "Back to all projects"}" aria-label="Morphameleon — ${SNAPSHOT ? "back to the overview" : "back to all projects"}">${brand}</a><div class="row">${SNAPSHOT ? '<a class="back-link" href="../../">Back to the overview</a>' : ""}${extra}<button class="helpbtn" onclick="startProductTour()" aria-label="Replay product tour">? Product tour</button></div></div>`;
 const tailLoader = '<svg class="tail-loader" viewBox="0 0 44 44" aria-hidden="true"><path d="M7 10c17-7 30 1 28 13-2 10-15 15-22 9-5-4-2-11 4-11 5 0 7 5 4 8"/></svg>';
 const TOUR = [
   { sel: "#src", title: "Add a repository", text: "Paste a GitHub URL or a local path. Your code is not changed." },
@@ -393,7 +410,7 @@ async function home() {
       <div class="row"><input id="src" placeholder="https://github.com/you/legacy-app  or  ~/code/legacy-app"><button class="primary" id="add">Add project</button></div>
       <p class="muted" style="margin-top:8px">Your main branch stays untouched.</p>
       <pre class="log mono" id="log" hidden></pre></div>
-      <img class="chameleon-art" src="/assets/morphameleon-hero.png" alt="Colorful chameleon curled around a yellow sun"></div>
+      <img class="chameleon-art" src="${ASSETS}morphameleon-hero.png" alt="Colorful chameleon curled around a yellow sun"></div>
     </div>
     <div class="card" id="projectsCard"><h3 class="section-title">Projects</h3>${projects.length ? `<div class="project-grid">${projects.map((p) => `<a class="project-tile" href="#/p/${p.id}/${p.loop ? "dashboard" : "providers"}"><b>${esc(p.name)}</b><span class="mono muted">${esc(p.path)}</span>${p.loop ? '<span class="badge s-work"><span class="dot"></span>Migration running</span>' : '<span class="badge"><span class="dot"></span>Migration paused</span>'}</a>`).join("")}</div>` : '<div class="empty">No projects yet.</div>'}</div>`;
   $("add").onclick = async () => {
@@ -426,7 +443,7 @@ async function projectPage(pid, step) {
   if (mountedPid !== pid || !$("body")) {
     mountedPid = pid;
     $("app").innerHTML = header(`${projectSwitcher(projects,p)}<span class="sub" id="loopbadge">${loopBadge(p.loop)}</span>`) +
-      `<div class="breadcrumb" id="crumb">${crumb}</div><div class="project-head"><div><div class="eyebrow">Active project</div><h1>${esc(p.name)}</h1><details class="project-meta"><summary>Project details</summary><div class="mono muted project-path" title="${esc(p.path)}">${esc(p.path)}</div></details></div></div>
+      `<div class="breadcrumb" id="crumb">${crumb}</div><div class="project-head"><div><div class="eyebrow">${SNAPSHOT ? "Finished run" : "Active project"}</div><h1>${esc(p.name)}</h1><details class="project-meta"><summary>Project details</summary><div class="mono muted project-path" title="${esc(p.path)}">${esc(p.path)}</div></details></div></div>
      ${nav}
      <div id="body"></div>`;
     window.scrollTo(0, 0);
@@ -580,7 +597,7 @@ async function dashboardStep(p) {
   let s;
   if (!$("body").children.length) $("body").innerHTML = `<div class="card empty-state">${tailLoader}<h3 class="section-title">Reading migration state</h3></div>`;
   try { s = await api(`projects/${p.id}/state`); } catch (e) { $("body").innerHTML = `<div class="note bad">${esc(e.message)}</div>`; return; }
-  if (!location.hash.endsWith("/dashboard")) return;
+  if (!SNAPSHOT && !location.hash.endsWith("/dashboard")) return;
   const mig = s.migration, mods = mig ? mig.modules : [];
   const migrated = mods.filter((m) => m.migrate === "merged").length, toPin = mods.filter((m) => m.pin !== null).length, pinned = mods.filter((m) => m.pin === "merged").length;
   const merged = s.tasks.filter((t) => t.status === "merged").length;
@@ -591,18 +608,19 @@ async function dashboardStep(p) {
   if ($("loopbadge")) $("loopbadge").innerHTML = loopBadge(s.loop);
   const tile = (num, lbl, pct) => `<div class="card tile"><div class="num">${num}</div><div class="lbl">${lbl}</div>${pct != null ? `<div class="bar"><span style="width:${pct}%"></span></div>` : ""}</div>`;
   const scrollY = window.scrollY;
-  const phase = goalDone ? 4 : merged ? 3 : s.tasks.length ? 2 : mig ? 1 : 0;
+  const phase = goalDone ? 5 : merged ? 3 : s.tasks.length ? 2 : mig ? 1 : 0;
   $("body").innerHTML = `
-    <div class="card hero"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="eyebrow">${s.loop ? "Migration in progress" : "Migration paused"}</div><h3 class="section-title">${goalDone ? "Migration complete" : needs ? `${needs} item${needs===1?"":"s"} need your attention` : s.tasks.length ? "Agents are working through the plan" : mig ? "The planner is preparing the first tasks" : "Review the migration plan to begin"}</h3><p class="sub">${mig ? `<b>${esc(mig.from)}</b> → <b>${esc(mig.to)}</b>` : "No migration plan yet"} · updated ${esc(s.generated)}</p></div>
+    ${SNAPSHOT ? '<div class="note">A read-only snapshot of one real run. Nothing here calls a model.</div>' : ""}
+    <div class="card hero"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="eyebrow">${goalDone ? "Finished" : s.loop ? "Migration in progress" : "Migration paused"}</div><h3 class="section-title">${goalDone ? "Migration complete" : needs ? `${needs} item${needs===1?"":"s"} need your attention` : s.tasks.length ? "Agents are working through the plan" : mig ? "The planner is preparing the first tasks" : "Review the migration plan to begin"}</h3><p class="sub">${mig ? `<b>${esc(mig.from)}</b> → <b>${esc(mig.to)}</b>` : "No migration plan yet"} · updated ${esc(s.generated)}</p></div>
       <div class="row"><button id="loopbtn">${s.loop ? "Pause migration" : "Resume migration"}</button>${canPr ? `<button class="primary" id="prbtn" ${merged ? "" : "disabled"} title="${goalDone ? "" : "Migration still running; the PR will contain what has merged so far"}">Open pull request</button>` : ""}</div></div>
       <div class="timeline">${["Repository analysed","Plan prepared","Behaviour protected","Code migrated","Final review"].map((x,i)=>`<div class="${i<phase?"done":i===phase?"active":""}">${i<phase?"✓ ":""}${x}</div>`).join("")}</div></div>
     <div class="card"><div class="eyebrow">Safe working branch</div><h3 class="section-title">Your original code stays untouched</h3>
       <p>Reviewed work goes to <span class="mono">${esc(s.integration)}</span>. You merge it into <span class="mono">${esc(s.main)}</span>.</p>
-      <details class="advanced"><summary>View local Git commands</summary><pre class="log mono" style="margin-top:10px">cd ${esc(p.path)}
+      ${SNAPSHOT ? "" : `<details class="advanced"><summary>View local Git commands</summary><pre class="log mono" style="margin-top:10px">cd ${esc(p.path)}
 git log --oneline ${esc(s.main)}..${esc(s.integration)}     # what the agents merged
 git diff ${esc(s.main)}...${esc(s.integration)} --stat      # files changed
-git switch ${esc(s.integration)}                            # look at the migrated code</pre></details>
-      ${canPr ? "" : `<div class="note">${!ghRemote ? `Add a GitHub remote to open pull requests from here: <span class="mono">git remote add origin &lt;url&gt; &amp;&amp; git push -u origin ${esc(s.main)}</span>.` : `Install the GitHub CLI and run <span class="mono">gh auth login</span> to open pull requests from here.`}</div>`}</div>
+git switch ${esc(s.integration)}                            # look at the migrated code</pre></details>`}
+      ${SNAPSHOT || canPr ? "" : `<div class="note">${!ghRemote ? `Add a GitHub remote to open pull requests from here: <span class="mono">git remote add origin &lt;url&gt; &amp;&amp; git push -u origin ${esc(s.main)}</span>.` : `Install the GitHub CLI and run <span class="mono">gh auth login</span> to open pull requests from here.`}</div>`}</div>
     ${s.tasks.length || mods.length ? `<section class="grid tiles" style="margin-bottom:16px">
       ${tile(`${migrated}/${mods.filter((m) => m.migrate !== null).length || mods.length}`, "modules migrated", mods.length ? (100 * migrated) / Math.max(1, mods.filter((m) => m.migrate !== null).length) : 0)}
       ${tile(`${pinned}/${toPin}`, "modules with behaviour captured", toPin ? (100 * pinned) / toPin : 0)}
@@ -626,7 +644,7 @@ git switch ${esc(s.integration)}                            # look at the migrat
   if ($("prbtn")) $("prbtn").onclick = async () => { if (!confirm("Push the merged migration as a new branch to the repo's GitHub remote and open a pull request?")) return; const log = document.createElement("pre"); log.className = "log mono"; $("body").prepend(log); const j = await waitJob(await api(`projects/${p.id}/pull-request`, {}), log); if (j.status === "done") toast("Pull request opened: " + j.result.url); else toast("Could not open the pull request; see the log"); };
   if (selected) showDetail(p, s.tasks.find((t) => t.id === selected));
   const refresh = () => { if (tourIndex >= 0) return (timer = setTimeout(refresh, 1000)); if (!document.activeElement || !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) dashboardStep(p); else timer = setTimeout(() => dashboardStep(p), 5000); };
-  timer = setTimeout(refresh, 6000);
+  if (!SNAPSHOT) timer = setTimeout(refresh, 6000);
 }
 async function showDetail(p, t) {
   const el = $("detail"); if (!t) return; el.hidden = false;

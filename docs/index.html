@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morphameleon</title>
+<meta name="description" content="Morphameleon migrates a codebase without breaking what works. Here it moved a jQuery shop to strict TypeScript, and the rendered HTML stayed byte-identical.">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main>
+  <header class="top">
+    <a class="brand" href="./" aria-label="Morphameleon"><img class="brand-logo" src="./assets/morphameleon-logo.png" alt="Morphameleon" width="640" height="354"></a>
+    <a class="top-link" href="https://github.com/abomasumm/nemotron-migration-agent">Code on GitHub</a>
+  </header>
+
+  <section class="card hero">
+    <div class="home-hero-grid">
+      <div>
+        <h1>Migrate a codebase without breaking what works.</h1>
+        <p class="sub">Morphameleon moved a jQuery shop to strict TypeScript. After the same seven clicks, both versions render byte-identical HTML.</p>
+        <div class="row">
+          <a class="button primary" href="./demo/dashboard/">See the finished run</a>
+          <a class="button" href="#compare">Try both versions</a>
+        </div>
+      </div>
+      <img class="chameleon-art" src="./assets/morphameleon-hero.png" alt="Colorful chameleon curled around a yellow sun" width="840" height="840">
+    </div>
+  </section>
+
+  <section class="card" id="compare">
+    <div class="eyebrow">Same behaviour</div>
+    <h2 class="section-title">Click both. They should match.</h2>
+    <p class="sub">Two real builds of the same plant shop. Filter, add to cart, remove.</p>
+    <div class="frames">
+      <figure>
+        <figcaption><b>Before: jQuery</b><a href="./demo/before/">Open full page</a></figcaption>
+        <iframe src="./demo/before/" title="The plant shop before the migration, built with jQuery" loading="lazy"></iframe>
+      </figure>
+      <figure>
+        <figcaption><b>After: strict TypeScript, plain DOM</b><a href="./demo/after/">Open full page</a></figcaption>
+        <iframe src="./demo/after/" title="The plant shop after the migration, in TypeScript with no jQuery" loading="lazy"></iframe>
+      </figure>
+    </div>
+  </section>
+
+  <section class="tiles">
+    <div class="card tile"><div class="num">0 bytes</div><div class="lbl">of rendered HTML differ after the same clicks</div></div>
+    <div class="card tile"><div class="num">2 → 48</div><div class="lbl">tests, all passing on the old code and the new</div></div>
+    <div class="card tile"><div class="num">92.8 → 6.5 KB</div><div class="lbl">JavaScript shipped, with jQuery gone</div></div>
+    <div class="card tile"><div class="num">10</div><div class="lbl">reviewed tasks: 6 to protect behaviour, 4 to migrate</div></div>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">How it works</div>
+    <h2 class="section-title">Proof comes before the edit</h2>
+    <dl class="steps-list">
+      <div><dt>Protect</dt><dd>GLM-5.3 Flash writes tests for what the old code does today, odd results included. Source stays untouched.</dd></div>
+      <div><dt>Convert</dt><dd>DeepSeek V4.1 Flash and MiniMax M3.1 Flash compete on every migrate task. Neither can edit the tests.</dd></div>
+      <div><dt>Review</dt><dd>NVIDIA Nemotron 3.5 Super VL judges and reviews every change, a family no worker uses. All of it runs on Nebius Token Factory.</dd></div>
+      <div><dt>Merge</dt><dd>Passing work lands on a separate branch. Only a person merges it into main.</dd></div>
+    </dl>
+    <p class="muted run-note">This run used 36 model calls and about 12 minutes of model time. That leaves out one planning call frozen for three hours while the laptop slept; it failed, was replanned, and is still in the log.</p>
+  </section>
+
+  <section class="card close">
+    <div>
+      <h2 class="section-title">Read every decision it made</h2>
+      <p class="sub">A read-only snapshot of one real run. Nothing here calls a model.</p>
+    </div>
+    <a class="button primary" href="./demo/dashboard/">See the finished run</a>
+  </section>
+</main>
+</body>
+</html>

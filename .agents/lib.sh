@@ -78,7 +78,7 @@ _run_once() {
   t0=$(date +%s)
   [ "$tools" = none ] && tf=(--no-tools) || tf=(--tools "$tools")
   read -ra fl <<<"${PI_FLAGS:-}"
-  ( cd "$cwd" && "$TIMEOUT" "$tmo" pi -p --no-session "${fl[@]}" --model "$model" "${tf[@]}" \
+  ( cd "$cwd" && "$TIMEOUT" -k 30s "$tmo" pi -p --no-session "${fl[@]}" --model "$model" "${tf[@]}" \
       "Follow the task instructions provided on stdin." <"$pf" ) >"$out" 2>"$out.err"
   rc=$?
   logrun "$id" "$role" "$model" "$rc" "$(( $(date +%s)-t0 ))"

@@ -369,5 +369,6 @@ app/                     local web app: server.py (standard library only) and in
   secrets.sh.example     copy to secrets.sh and add your key
 examples/                legacy-bookstore-api (demo input), legacy-bookstore-api-migrated (its result),
                          legacy-invoice-js (smaller JS → TS example)
-docs/                    architecture pages
+docs/                    public demo site for GitHub Pages: landing page, run snapshot, before and after builds
+archive/                 earlier design notes from before the hackathon
 ```
