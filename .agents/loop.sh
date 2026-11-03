@@ -7,6 +7,7 @@
 #   .agents/loop.sh --until-settled   stop once nothing more can happen without a person, and write why to
 #                                     .agents/logs/outcome (used by the GitHub Action):
 #                                     done | needs-you | limit-calls | limit-time
+# Limits for --until-settled: MAX_MODEL_CALLS (per run; new work stops there, so tasks already running can add a
 # few), TIME_LIMIT_MINUTES, GRACE_MINUTES (how long running tasks may finish after a limit), STALL_SECONDS (no change for this long means a person is needed).
 set -uo pipefail
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
